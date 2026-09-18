@@ -8,7 +8,7 @@ from .models import Profile, ClassRole
 def create_profile(sender, instance, created, **kwargs):
     """Create profile when user is created"""
     if created:
-        Profile.objects.create(
+        Profile.objects.get_or_create(
             user=instance,
-            class_role=ClassRole.STUDENT  # default role
+            defaults={'class_role': ClassRole.STUDENT}
         )
