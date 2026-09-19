@@ -68,11 +68,16 @@ PLANS: dict[str, Plan] = {p.code: p for p in (MONTHLY, YEARLY)}
 DEFAULT_PLAN = MONTHLY
 
 
-def get_plan(code: str | None) -> Plan | None:
-    """Resolve a plan code. Returns None for anything unrecognised."""
+def get_plan(code: str | int | None) -> Plan | None:
+    """Resolve a plan code or duration. Returns None for anything unrecognised."""
     if not code:
         return DEFAULT_PLAN
-    return PLANS.get(str(code).strip().lower())
+    s = str(code).strip().lower()
+    if s in ("1", "month", "monthly", "premium_monthly"):
+        return MONTHLY
+    if s in ("12", "year", "yearly", "annual", "premium_yearly"):
+        return YEARLY
+    return PLANS.get(s)
 
 
 def all_plans() -> list[dict]:

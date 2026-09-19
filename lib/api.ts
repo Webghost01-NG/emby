@@ -26,6 +26,7 @@ api.interceptors.request.use((config) => {
     "/auth/reset-password/",
     "/auth/class/validate-code/",
     "/auth/payment/verify/",
+    "/api/payments/verify/",
   ];
 
   // Check if the current request is to a public endpoint
@@ -839,17 +840,31 @@ export const classApi = {
 export const paymentApi = {
   // Initiate payment
   initiatePayment: async (
-    months: number,
-  ): Promise<{ authorization_url: string; reference: string }> => {
-    const response = await api.post("/auth/payment/initiate/", { months });
-    return response.data;
+    planOrMonths: number | string = "premium_monthly",
+  ): Promise<{ authorization_url: string; reference: string; access_code?: string; plan?: any }> => {
+    const plan =
+      typeof planOrMonths === "number"
+        ? planOrMonths === 12
+          ? "premium_yearly"
+          : "premium_monthly"
+        : planOrMonths;
+    const response = await api.post("/api/payments/checkout/", { plan });
+    const resData = response.data?.data || response.data;
+    return {
+      authorization_url: resData.authorization_url,
+      reference: resData.reference,
+      access_code: resData.access_code,
+      plan: resData.plan,
+    };
   },
 
   // Verify payment
   verifyPayment: async (
     reference: string,
-  ): Promise<{ message: string; user: UserProfile }> => {
-    const response = await api.post("/auth/payment/verify/", { reference });
+  ): Promise<{ message: string; user: UserProfile; success?: boolean }> => {
+    const response = await api.get(
+      `/api/payments/verify/?reference=${encodeURIComponent(reference)}`,
+    );
     return response.data;
   },
 };

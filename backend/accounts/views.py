@@ -901,103 +901,20 @@ class ExamCountdownViewSet(viewsets.ModelViewSet):
 
 
 # -------------------------
-# PAYMENT ENDPOINTS
+# PAYMENT ENDPOINTS (Delegated to payments app)
 # -------------------------
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def initiate_payment(request):
-    """Initiate Paystack payment for premium subscription"""
-    import requests as http_requests
-    
-    user = request.user
-    months = request.data.get('months', 1)
-    # 1499 NGN/month, 15000 NGN/year
-    amount = 15000 if months == 12 else 1499 * months
-    
-    # Create transaction
-    reference = f"EMBY-{user.id}-{secrets.token_urlsafe(8)}"
-    transaction = PaymentTransaction.objects.create(
-        user=user,
-        reference=reference,
-        amount=amount,
-        subscription_months=months
-    )
-    
-    # Initialize Paystack payment
-    url = "https://api.paystack.co/transaction/initialize"
-    headers = {
-        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "email": user.email,
-        "amount": int(amount * 100),  # Convert to kobo
-        "reference": reference,
-        "callback_url": settings.PAYSTACK_CALLBACK_URL
-    }
-    
-    response = http_requests.post(url, json=data, headers=headers)
-    
-    if response.status_code == 200:
-        result = response.json()
-        return Response({
-            'authorization_url': result['data']['authorization_url'],
-            'reference': reference
-        })
-    
-    return Response({
-        'error': 'Payment initialization failed'
-    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    """Legacy route: delegates to payments.views.checkout with server-authoritative pricing"""
+    from payments.views import checkout
+    return checkout(request)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'GET'])
 @permission_classes([AllowAny])
 def verify_payment(request):
-    """Verify Paystack payment and activate premium"""
-    import requests as http_requests
-    
-    reference = request.data.get('reference')
-    
-    if not reference:
-        return Response({'error': 'Reference required'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        transaction = PaymentTransaction.objects.get(reference=reference)
-    except PaymentTransaction.DoesNotExist:
-        return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    # Verify with Paystack
-    url = f"https://api.paystack.co/transaction/verify/{reference}"
-    headers = {
-        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"
-    }
-    
-    response = http_requests.get(url, headers=headers)
-    
-    if response.status_code == 200:
-        result = response.json()
-        
-        if result['data']['status'] == 'success':
-            # Update transaction
-            transaction.status = 'success'
-            transaction.verified_at = timezone.now()
-            transaction.save()
-            
-            # Activate premium subscription
-            profile = transaction.user.profile
-            profile.subscription_tier = SubscriptionTier.PREMIUM
-            profile.subscription_expires_at = timezone.now() + timedelta(days=30 * transaction.subscription_months)
-            profile.save()
-            
-            return Response({
-                'message': 'Payment verified successfully',
-                'user': ProfileSerializer(profile).data
-            })
-    
-    transaction.status = 'failed'
-    transaction.save()
-    
-    return Response({
-        'error': 'Payment verification failed'
-    }, status=status.HTTP_400_BAD_REQUEST)
+    """Legacy route: delegates to payments.views.verify with strict amount validation"""
+    from payments.views import verify
+    return verify(request)
