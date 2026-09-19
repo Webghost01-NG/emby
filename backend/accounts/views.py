@@ -75,12 +75,13 @@ def signup(request):
     if serializer.is_valid():
         user = serializer.save()
         
-        # Create profile
-        profile = Profile.objects.create(
+        # Get or create profile (signal may have already created it)
+        profile, _ = Profile.objects.get_or_create(
             user=user,
-            class_role=ClassRole.STUDENT,  # Default role, will be updated in onboarding
-            email_verification_token=secrets.token_urlsafe(32)
+            defaults={'class_role': ClassRole.STUDENT}
         )
+        profile.email_verification_token = secrets.token_urlsafe(32)
+        profile.save()
         
         # Send verification email
         try:
