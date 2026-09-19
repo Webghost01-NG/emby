@@ -439,8 +439,12 @@ def submit_onboarding(request):
             school_name = serializer.validated_data['school_name']
             set_name = serializer.validated_data['set_name']
             class_code = serializer.validated_data.get('class_code', '')
-            subscription_tier = serializer.validated_data['subscription_tier']
             responses = serializer.validated_data.get('responses', [])
+            
+            # Ensure profile defaults to FREE tier during onboarding;
+            # upgrades to PREMIUM strictly require verified payment transactions or admin/class-head approval.
+            if not profile.subscription_tier:
+                profile.subscription_tier = SubscriptionTier.FREE
             
             # Get or create school
             school, _ = School.objects.get_or_create(name=school_name)
@@ -503,13 +507,10 @@ def submit_onboarding(request):
                 try:
                     class_group = ClassGroup.objects.get(code=class_code, is_active=True)
                     profile.class_group = class_group
-                    profile.subscription_tier = subscription_tier
                 except ClassGroup.DoesNotExist:
                     return Response({
                         'error': 'Invalid class code'
                     }, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                profile.subscription_tier = subscription_tier
 
             # ----------------------------------------------------------------
             # SAVE FIRST — always persist before sending emails.

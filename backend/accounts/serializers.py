@@ -149,7 +149,6 @@ class OnboardingSubmitSerializer(serializers.Serializer):
     school_name = serializers.CharField(max_length=200)
     set_name = serializers.CharField(max_length=100)
     class_code = serializers.CharField(max_length=6, required=False, allow_blank=True)
-    subscription_tier = serializers.ChoiceField(choices=['free', 'premium'])
     responses = serializers.ListField(
         child=serializers.DictField(child=serializers.CharField()),
         required=False

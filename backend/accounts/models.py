@@ -140,7 +140,7 @@ class Profile(models.Model):
         
         # Paid premium
         if self.subscription_tier == SubscriptionTier.PREMIUM:
-            if not self.subscription_expires_at or self.subscription_expires_at > timezone.now():
+            if self.subscription_expires_at and self.subscription_expires_at > timezone.now():
                 return True
                 
         return False
