@@ -622,7 +622,7 @@ export const onboardingApi = {
     school_name: string;
     set_name: string;
     class_code?: string;
-    subscription_tier: "free" | "premium";
+    subscription_tier?: "free" | "premium";
     responses?: Array<{ question_id: number; answer: string }>;
   }): Promise<{
     message: string;
