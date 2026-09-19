@@ -1,0 +1,51 @@
+name: CI
+
+"on":
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  ci:
+    name: CI Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate backend Python code syntax and compilation
+        run: |
+          echo "Compiling backend Python modules..."
+          python -m compileall -x "(test_import|update_serializer)" backend
+
+      - name: Validate JavaScript syntax
+        run: |
+          echo "Validating JavaScript syntax for root-level scripts..."
+          for script in script.js rpc-proxy.js fix_slice.js write_files.js write_quiz_components.js; do
+            if [ -f "$script" ]; then
+              echo "Checking syntax: $script"
+              node --check "$script"
+            fi
+          done
+          for jsfile in *.js; do
+            if [ -f "$jsfile" ]; then
+              echo "Checking syntax: $jsfile"
+              node --check "$jsfile"
+            fi
+          done
