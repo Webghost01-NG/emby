@@ -29,6 +29,7 @@ urlpatterns = [
     # Class
     path('class/join/', views.join_class, name='join-class'),
     path('class/my-class/', views.get_my_class, name='my-class'),
+    path('class/members/', views.get_class_members, name='class-members'),
     path('class/validate-code/', views.validate_class_code, name='validate-class-code'),
     
     # Class Head Verification

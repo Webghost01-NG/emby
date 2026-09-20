@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authApi } from "@/lib/api";
+import { authApi, classApi } from "@/lib/api";
 import { UserProfile } from "@/lib/api";
 import AuthGuard from "@/components/auth/auth-guard";
 import { isClassHead } from "@/lib/guards";
@@ -51,33 +51,20 @@ export default function RosterPage() {
       const profileData = await authApi.getProfile();
       setProfile(profileData);
 
-      // TODO: Replace with actual API call when backend endpoint is ready
-      // const membersData = await classApi.getClassMembers();
-      // setMembers(membersData);
-
-      // Mock data for now
-      const mockMembers: ClassMember[] = [
-        {
-          id: 1,
-          user: { first_name: "John", last_name: "Doe", email: "john@example.com" },
-          profile_image: null,
-          role: "student",
-          total_points: 1250,
-          streak_days: 15,
-          rank: 1,
-        },
-        {
-          id: 2,
-          user: { first_name: "Jane", last_name: "Smith", email: "jane@example.com" },
-          profile_image: null,
-          role: "student",
-          total_points: 980,
-          streak_days: 12,
-          rank: 2,
-        },
-      ];
-      setMembers(mockMembers);
-      setFilteredMembers(mockMembers);
+      try {
+        const membersData = await classApi.getClassMembers();
+        if (membersData && Array.isArray(membersData)) {
+          setMembers(membersData);
+          setFilteredMembers(membersData);
+        } else {
+          setMembers([]);
+          setFilteredMembers([]);
+        }
+      } catch (classErr) {
+        console.error("Failed to load class members from API:", classErr);
+        setMembers([]);
+        setFilteredMembers([]);
+      }
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
