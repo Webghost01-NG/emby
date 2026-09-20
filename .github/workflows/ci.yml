@@ -32,7 +32,7 @@ jobs:
       - name: Validate backend Python code syntax and compilation
         run: |
           echo "Compiling backend Python modules..."
-          python -m compileall -x "(test_import|update_serializer)" backend
+          python -m compileall backend
 
       - name: Validate JavaScript syntax
         run: |
