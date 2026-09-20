@@ -1,28 +1,41 @@
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
 import json
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import PastQuestionUpload
 from .services import process_past_question_upload
 
 
-@login_required
-@require_http_methods(["POST"])
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
 def upload_past_questions(request):
     """
     Upload past question content for AI processing.
     Body: {content, subject_id, block_id (optional), topic_id (optional), file_name (optional)}
     Generates QuizQuestions and saves them to the curriculum question bank.
     """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    data = request.data
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+    elif not isinstance(data, dict):
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
 
-    content = data.get("content", "").strip()
+    content = data.get("content", "")
+    if isinstance(content, str):
+        content = content.strip()
     if not content:
-        return JsonResponse({"error": "content is required"}, status=400)
+        return Response({"error": "content is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     subject_id = data.get("subject_id")
     block_id = data.get("block_id")
@@ -44,27 +57,28 @@ def upload_past_questions(request):
 
     result = process_past_question_upload(upload.id)
 
-    return JsonResponse({
+    return Response({
         "upload_id": upload.id,
         "created_mcq": result.get("created_mcq", 0),
         "created_theory": result.get("created_theory", 0),
         "error": result.get("error"),
-    }, status=201 if not result.get("error") else 400)
+    }, status=status.HTTP_201_CREATED if not result.get("error") else status.HTTP_400_BAD_REQUEST)
 
 
-@login_required
-@require_http_methods(["GET"])
+@api_view(["GET"])
+@authentication_classes([JWTAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
 def get_upload_status(request, upload_id):
     """Check processing status of a past question upload."""
     try:
         upload = PastQuestionUpload.objects.get(id=upload_id, uploaded_by=request.user)
     except PastQuestionUpload.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
+        return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    return JsonResponse({
+    return Response({
         "id": upload.id,
         "file_name": upload.file_name,
         "processed": upload.processed,
         "processing_error": upload.processing_error,
         "uploaded_at": upload.uploaded_at.isoformat(),
-    })
+    }, status=status.HTTP_200_OK)
