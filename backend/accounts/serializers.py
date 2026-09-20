@@ -44,6 +44,45 @@ class ClassGroupSerializer(serializers.ModelSerializer):
         return obj.members.count()
 
 
+class ClassMemberSerializer(serializers.ModelSerializer):
+    """Serializer for class roster member listing"""
+    user = serializers.SerializerMethodField()
+    profile_image = serializers.CharField(source='photo_url', read_only=True, allow_null=True)
+    role = serializers.CharField(source='class_role', read_only=True)
+    total_points = serializers.SerializerMethodField()
+    streak_days = serializers.SerializerMethodField()
+    rank = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'user', 'profile_image', 'photo_url', 'role', 'class_role',
+            'platform_role', 'total_points', 'streak_days', 'rank'
+        ]
+
+    def get_user(self, obj):
+        u = obj.user
+        return {
+            'id': u.id,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+            'email': u.email,
+            'username': u.username,
+        }
+
+    def get_total_points(self, obj):
+        stats = getattr(obj.user, 'stats', None)
+        return getattr(stats, 'points', 0) if stats else 0
+
+    def get_streak_days(self, obj):
+        stats = getattr(obj.user, 'stats', None)
+        return getattr(stats, 'active_streak', 0) if stats else obj.streak
+
+    def get_rank(self, obj):
+        stats = getattr(obj.user, 'stats', None)
+        return getattr(stats, 'rank', None) if stats else None
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
