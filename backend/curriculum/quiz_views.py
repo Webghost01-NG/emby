@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from .models import QuizAttempt, QuizQuestion, QuizAttemptResponse, UserProgress, Subject, Topic
+from .models import QuizAttempt, QuizQuestion, QuizAttemptResponse, UserProgress, Subject, Topic, SubBlock
 from .serializers import QuizAttemptSerializer, QuizAttemptCreateSerializer
 from django.db.models import Q
 import uuid
@@ -119,8 +119,19 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
             attempt.subject_id = request.data['subject']
         if request.data.get('block'):
             attempt.block_id = request.data['block']
+        if request.data.get('sub_block'):
+            attempt.sub_block_id = request.data['sub_block']
         if request.data.get('topic'):
-            attempt.sub_block_id = request.data['topic']
+            topic_val = request.data['topic']
+            topic_obj = Topic.objects.filter(id=topic_val).first()
+            if topic_obj:
+                attempt.topic = topic_obj
+                if not attempt.sub_block_id and topic_obj.sub_block_id:
+                    attempt.sub_block_id = topic_obj.sub_block_id
+                if not attempt.block_id and topic_obj.block_id:
+                    attempt.block_id = topic_obj.block_id
+            elif SubBlock.objects.filter(id=topic_val).exists():
+                attempt.sub_block_id = topic_val
         if request.data.get('slide'):
             attempt.slide_id = request.data['slide']
             
@@ -142,7 +153,10 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
         if not question_id or not selected_option:
             return Response({'error': 'Missing data'}, status=status.HTTP_400_BAD_REQUEST)
             
-        question = QuizQuestion.objects.get(id=question_id)
+        try:
+            question = QuizQuestion.objects.get(id=question_id)
+        except QuizQuestion.DoesNotExist:
+            return Response({'error': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
         
         # Determine correct
         is_correct = (selected_option == question.correct_option)

@@ -926,6 +926,7 @@ class QuizAttempt(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="quiz_attempts", null=True, blank=True)
     block = models.ForeignKey(Block, on_delete=models.CASCADE, related_name="quiz_attempts", null=True, blank=True)
     sub_block = models.ForeignKey(SubBlock, on_delete=models.CASCADE, related_name="quiz_attempts", null=True, blank=True)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="quiz_attempts", null=True, blank=True)
     slide = models.ForeignKey(Slide, on_delete=models.CASCADE, related_name="quiz_attempts", null=True, blank=True)
     
     # Exam type and configuration
