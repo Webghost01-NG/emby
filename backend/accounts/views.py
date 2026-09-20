@@ -190,16 +190,17 @@ def google_login(request):
             profile, profile_created = Profile.objects.get_or_create(
                 user=user,
                 defaults={
-                    'role': ClassRole.STUDENT,
+                    'class_role': ClassRole.STUDENT,
                     'photo_url': photo_url,
                     'email_verified': True  # Google emails are pre-verified
                 }
             )
             
-            if not profile_created and photo_url:
+            # Google OAuth accounts have verified emails by definition
+            profile.email_verified = True
+            if photo_url:
                 profile.photo_url = photo_url
-                profile.email_verified = True
-                profile.save()
+            profile.save()
             
             print(f"Profile ready: {profile.id}")
             
