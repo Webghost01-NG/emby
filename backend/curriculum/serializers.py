@@ -441,13 +441,20 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
     subject_name = serializers.CharField(source='subject.name', read_only=True, allow_null=True)
     block_name = serializers.CharField(source='block.name', read_only=True, allow_null=True)  
     sub_block_name = serializers.CharField(source='sub_block.name', read_only=True, allow_null=True)
-    topic = serializers.PrimaryKeyRelatedField(source='sub_block', queryset=SubBlock.objects.all(), required=False, allow_null=True)
-    topic_name = serializers.CharField(source='sub_block.name', read_only=True, allow_null=True)
+    topic = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), required=False, allow_null=True)
+    topic_name = serializers.SerializerMethodField()
     slide_name = serializers.CharField(source='slide.title', read_only=True, allow_null=True)
     responses = QuizAttemptResponseSerializer(many=True, read_only=True)
     questions = serializers.SerializerMethodField()
     time_taken_minutes = serializers.SerializerMethodField()
     time_remaining_seconds = serializers.SerializerMethodField()
+
+    def get_topic_name(self, obj):
+        if obj.topic:
+            return obj.topic.name
+        if obj.sub_block:
+            return obj.sub_block.name
+        return None
     
     class Meta:
         model = QuizAttempt
@@ -550,7 +557,7 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
 
 
 class QuizAttemptCreateSerializer(serializers.ModelSerializer):
-    topic = serializers.PrimaryKeyRelatedField(source='sub_block', queryset=SubBlock.objects.all(), required=False, allow_null=True)
+    topic = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all(), required=False, allow_null=True)
     
     class Meta:
         model = QuizAttempt
@@ -564,6 +571,13 @@ class QuizAttemptCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        
+        topic = attrs.get('topic')
+        if topic:
+            if not attrs.get('sub_block') and topic.sub_block:
+                attrs['sub_block'] = topic.sub_block
+            if not attrs.get('block') and topic.block:
+                attrs['block'] = topic.block
         
         try:
             from curriculum.ai_views import has_premium_access
