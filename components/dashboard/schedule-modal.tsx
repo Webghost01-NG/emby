@@ -22,6 +22,7 @@ import {
   type ScheduleItemType,
 } from "@/store/schedule-slice";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import type { Slide } from "@/lib/slides";
 import { getSlidesForCourse } from "@/lib/slides";
 import { curriculumApi } from "@/lib/api";
 
@@ -106,8 +107,19 @@ export function ScheduleModal() {
     loadCurriculum();
   }, []);
 
-  // Get slides for selected course
-  const availableSlides = courseId ? getSlidesForCourse(courseId) : [];
+  // Get slides for selected course (async)
+  const [availableSlides, setAvailableSlides] = useState<Slide[]>([]);
+  useEffect(() => {
+    if (!courseId) {
+      setAvailableSlides([]);
+      return;
+    }
+    let cancelled = false;
+    getSlidesForCourse(courseId).then((slides) => {
+      if (!cancelled) setAvailableSlides(slides);
+    });
+    return () => { cancelled = true; };
+  }, [courseId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

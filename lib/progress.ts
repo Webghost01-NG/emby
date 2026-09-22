@@ -96,14 +96,3 @@ export function formatLastAccessed(date: Date): string {
   return date.toLocaleDateString()
 }
 
-// Mock data generator for development (remove in production)
-export function generateMockProgress(courseId: string): CourseProgress {
-  return {
-    courseId,
-    totalSlides: Math.floor(Math.random() * 100) + 20,
-    viewedSlides: Math.floor(Math.random() * 50),
-    progress: Math.floor(Math.random() * 100),
-    lastAccessed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-    timeSpent: Math.floor(Math.random() * 3600),
-  }
-}

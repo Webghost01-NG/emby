@@ -3,11 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, CreditCard, Presentation } from "lucide-react";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  LineChart, Line
-} from "recharts";
+import { Users, BookOpen, CreditCard, Presentation, BarChart3 } from "lucide-react";
 
 type AnalyticsData = {
   total_users: number;
@@ -23,7 +19,6 @@ export default function AdminDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState("30d");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,31 +51,11 @@ export default function AdminDashboard() {
     );
   }
 
-  // Multiply mock data slightly to simulate range changes
-  const multiplier = timeRange === "7d" ? 0.3 : timeRange === "90d" ? 2.5 : 1;
-
   const statCards = [
-    { title: "Total Users", value: Math.floor(data.total_users * multiplier), icon: Users, desc: `${Math.floor(data.total_premium_users * multiplier)} premium users` },
+    { title: "Total Users", value: data.total_users, icon: Users, desc: `${data.total_premium_users} premium users` },
     { title: "Active Classes", value: data.total_classes, icon: BookOpen, desc: "Created across all schools" },
     { title: "Content Slides", value: data.total_slides, icon: Presentation, desc: `Across ${data.total_subjects} subjects` },
-    { title: "Revenue", value: `₦${((data.revenue_summary.monthly * multiplier) / 1000).toFixed(1)}k`, icon: CreditCard, desc: "From premium subscriptions" },
-  ];
-
-  const mockRevenueData = [
-    { name: 'Jan', value: 4000 * multiplier },
-    { name: 'Feb', value: 3000 * multiplier },
-    { name: 'Mar', value: 2000 * multiplier },
-    { name: 'Apr', value: 2780 * multiplier },
-    { name: 'May', value: 1890 * multiplier },
-    { name: 'Jun', value: 2390 * multiplier },
-    { name: 'Jul', value: 3490 * multiplier },
-  ];
-  
-  const mockUserGrowthData = [
-    { name: 'Week 1', students: 400 * multiplier, teachers: 240 * multiplier },
-    { name: 'Week 2', students: 500 * multiplier, teachers: 280 * multiplier },
-    { name: 'Week 3', students: 650 * multiplier, teachers: 310 * multiplier },
-    { name: 'Week 4', students: 800 * multiplier, teachers: 390 * multiplier },
+    { title: "Revenue", value: `₦${(data.revenue_summary.monthly / 1000).toFixed(1)}k`, icon: CreditCard, desc: "From premium subscriptions" },
   ];
 
   return (
@@ -90,16 +65,6 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
           <p className="text-gray-500 mt-1">Welcome back. Here is what's happening with the platform.</p>
         </div>
-        <select 
-          className="h-10 w-[160px] rounded-md border border-input bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
-        >
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-          <option value="90d">Last 3 Months</option>
-          <option value="all">All Time</option>
-        </select>
       </div>
 
       {/* Top Stats */}
@@ -131,25 +96,10 @@ export default function AdminDashboard() {
             <CardTitle>Revenue Trends</CardTitle>
             <CardDescription>Monthly subscription revenue over time.</CardDescription>
           </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockRevenueData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                <RechartsTooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="var(--color-primary)" 
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="h-80 flex flex-col items-center justify-center text-center">
+            <BarChart3 className="h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">Revenue chart data will appear here once the backend provides time-series analytics.</p>
+            <p className="text-xs text-gray-400 mt-1">Current monthly: ₦{(data.revenue_summary.monthly / 1000).toFixed(1)}k</p>
           </CardContent>
         </Card>
 
@@ -159,20 +109,10 @@ export default function AdminDashboard() {
             <CardTitle>User Growth</CardTitle>
             <CardDescription>New registrations over the past month.</CardDescription>
           </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockUserGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                <RechartsTooltip 
-                  cursor={{ fill: '#f3f4f6' }}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="students" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="teachers" fill="#93c5fd" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-80 flex flex-col items-center justify-center text-center">
+            <BarChart3 className="h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">User growth chart data will appear here once the backend provides time-series analytics.</p>
+            <p className="text-xs text-gray-400 mt-1">Current total: {data.total_users} users</p>
           </CardContent>
         </Card>
       </div>
