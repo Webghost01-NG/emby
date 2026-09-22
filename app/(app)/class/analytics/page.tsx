@@ -2,15 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authApi } from "@/lib/api";
+import { authApi, classApi } from "@/lib/api";
 import { UserProfile } from "@/lib/api";
 import AuthGuard from "@/components/auth/auth-guard";
 import { isClassHead } from "@/lib/guards";
 import { TrendingUp, Users, Award, BookOpen, Clock, Target, ArrowLeft } from "lucide-react";
 
+type ClassMember = {
+  id: number;
+  full_name: string;
+  class_role: string;
+  photo_url: string | null;
+  points: number;
+  streak: number;
+  is_premium: boolean;
+};
+
+type ClassAnalytics = {
+  totalMembers: number;
+  activeToday: number;
+  avgPoints: number;
+  avgStreak: number;
+  topPerformers: { name: string; points: number; rank: number }[];
+};
+
 export default function AnalyticsPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [analytics, setAnalytics] = useState<ClassAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,7 +46,30 @@ export default function AnalyticsPage() {
         return;
       }
 
-      // TODO: Load analytics data from backend
+      // Fetch real class members data
+      const members: ClassMember[] = await classApi.getClassMembers();
+
+      const totalMembers = members.length;
+      const totalPoints = members.reduce((sum, m) => sum + (m.points || 0), 0);
+      const totalStreak = members.reduce((sum, m) => sum + (m.streak || 0), 0);
+      const avgPoints = totalMembers > 0 ? Math.round(totalPoints / totalMembers) : 0;
+      const avgStreak = totalMembers > 0 ? Math.round(totalStreak / totalMembers) : 0;
+
+      // Sort members by points for top performers
+      const sorted = [...members].sort((a, b) => (b.points || 0) - (a.points || 0));
+      const topPerformers = sorted.slice(0, 5).map((m, i) => ({
+        name: m.full_name,
+        points: m.points || 0,
+        rank: i + 1,
+      }));
+
+      setAnalytics({
+        totalMembers,
+        activeToday: 0, // Not available without a dedicated backend endpoint
+        avgPoints,
+        avgStreak,
+        topPerformers,
+      });
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -48,34 +90,23 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Mock data
-  const analytics = {
-    totalMembers: 25,
-    activeToday: 18,
-    avgPoints: 1250,
-    avgStreak: 12,
-    totalStudyTime: 450,
-    completionRate: 78,
-    topPerformers: [
-      { name: "John Doe", points: 2500, rank: 1 },
-      { name: "Jane Smith", points: 2300, rank: 2 },
-      { name: "Bob Johnson", points: 2100, rank: 3 },
-    ],
-    weakTopics: [
-      { name: "Biochemistry - Metabolism", struggles: 15 },
-      { name: "Anatomy - Nervous System", struggles: 12 },
-      { name: "Physiology - Cardiovascular", struggles: 10 },
-    ],
-    activityByDay: [
-      { day: "Mon", active: 20 },
-      { day: "Tue", active: 22 },
-      { day: "Wed", active: 18 },
-      { day: "Thu", active: 24 },
-      { day: "Fri", active: 19 },
-      { day: "Sat", active: 15 },
-      { day: "Sun", active: 12 },
-    ],
-  };
+  if (!analytics) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">No analytics data available.</p>
+            <button
+              onClick={() => router.push("/class")}
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Back to Class
+            </button>
+          </div>
+        </div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>
@@ -102,23 +133,9 @@ export default function AnalyticsPage() {
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Users className="w-6 h-6 text-purple-600" />
                 </div>
-                <span className="text-sm text-green-600 font-semibold">+3 this week</span>
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">{analytics.totalMembers}</div>
               <div className="text-sm text-gray-600">Total Members</div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-green-600" />
-                </div>
-                <span className="text-sm text-green-600 font-semibold">
-                  {Math.round((analytics.activeToday / analytics.totalMembers) * 100)}%
-                </span>
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{analytics.activeToday}</div>
-              <div className="text-sm text-gray-600">Active Today</div>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6">
@@ -142,56 +159,14 @@ export default function AnalyticsPage() {
               <div className="text-3xl font-bold text-gray-900 mb-1">{analytics.avgStreak} days</div>
               <div className="text-sm text-gray-600">Average Streak</div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-indigo-600" />
-                </div>
-                <span className="text-sm text-indigo-600 font-semibold">This week</span>
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{analytics.totalStudyTime}h</div>
-              <div className="text-sm text-gray-600">Total Study Time</div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-pink-600" />
-                </div>
-                <span className="text-sm text-pink-600 font-semibold">{analytics.completionRate}%</span>
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{analytics.completionRate}%</div>
-              <div className="text-sm text-gray-600">Completion Rate</div>
-            </div>
           </div>
 
-          {/* Charts Row */}
-          <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            {/* Activity Chart */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Weekly Activity</h3>
-              <div className="space-y-3">
-                {analytics.activityByDay.map((day) => (
-                  <div key={day.day}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700">{day.day}</span>
-                      <span className="text-sm font-semibold text-gray-900">{day.active} students</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full"
-                        style={{ width: `${(day.active / analytics.totalMembers) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Top Performers */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Top Performers</h3>
+          {/* Top Performers */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-6">Top Performers</h3>
+            {analytics.topPerformers.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No member data available yet.</p>
+            ) : (
               <div className="space-y-4">
                 {analytics.topPerformers.map((performer, index) => (
                   <div key={index} className="flex items-center gap-4">
@@ -214,33 +189,11 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Weak Topics */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">Topics Needing Attention</h3>
-            <div className="space-y-4">
-              {analytics.weakTopics.map((topic, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">{topic.name}</span>
-                    <span className="text-sm text-red-600 font-semibold">
-                      {topic.struggles} students struggling
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-red-500 h-2 rounded-full"
-                      style={{ width: `${(topic.struggles / analytics.totalMembers) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
       </div>
     </AuthGuard>
   );
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,9 +19,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { curriculum } from "@/lib/curriculum";
+import { loadCurriculum, breadcrumb } from "@/lib/curriculum";
 import { getSlidesForCourse } from "@/lib/slides";
-import { breadcrumb } from "@/lib/curriculum";
 
 interface SearchResult {
   id: string;
@@ -35,99 +34,107 @@ interface SearchResult {
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const [searchItems, setSearchItems] = useState<SearchResult[]>([]);
 
-  // Generate all searchable items
-  const searchItems = useMemo<SearchResult[]>(() => {
-    const items: SearchResult[] = [];
+  // Build search index from live curriculum + slides data
+  useEffect(() => {
+    async function buildSearchIndex() {
+      try {
+        const subjects = await loadCurriculum();
+        const items: SearchResult[] = [];
 
-    // Add courses
-    curriculum.forEach((subject) => {
-      subject.blocks.forEach((block) => {
-        if (subject.id === "biochemistry") {
-          // Biochemistry blocks
-          items.push({
-            id: block.id,
-            title: block.title,
-            type: "course",
-            url: `/courses/${block.id}`,
-            description: `${subject.title} · ${block.title}`,
-            subject: subject.title,
+        // Add courses
+        subjects.forEach((subject) => {
+          subject.blocks.forEach((block) => {
+            if (subject.id === "biochemistry") {
+              items.push({
+                id: block.id,
+                title: block.title,
+                type: "course",
+                url: `/courses/${block.id}`,
+                description: `${subject.title} · ${block.title}`,
+                subject: subject.title,
+              });
+            } else {
+              block.topics.forEach((topic) => {
+                items.push({
+                  id: topic.id,
+                  title: topic.title,
+                  type: "course",
+                  url: `/courses/${topic.id}`,
+                  description: `${subject.title} · ${block.title}`,
+                  subject: subject.title,
+                });
+              });
+            }
           });
-        } else {
-          // Anatomy and Physiology topics
-          block.topics.forEach((topic) => {
-            items.push({
-              id: topic.id,
-              title: topic.title,
-              type: "course",
-              url: `/courses/${topic.id}`,
-              description: `${subject.title} · ${block.title}`,
-              subject: subject.title,
-            });
-          });
+        });
+
+        // Add slides
+        for (const subject of subjects) {
+          for (const block of subject.blocks) {
+            const courseId =
+              subject.id === "biochemistry" ? block.id : block.topics[0]?.id;
+            if (courseId) {
+              const slides = await getSlidesForCourse(courseId);
+              slides.forEach((slide) => {
+                items.push({
+                  id: slide.id,
+                  title: slide.title,
+                  type: "slide",
+                  url: `/read/${courseId}/${slide.id}`,
+                  description: `${breadcrumb(courseId)} · ${slide.pages} pages`,
+                  subject: subject.title,
+                });
+              });
+            }
+          }
         }
-      });
-    });
 
-    // Add slides
-    curriculum.forEach((subject) => {
-      subject.blocks.forEach((block) => {
-        const courseId =
-          subject.id === "biochemistry" ? block.id : block.topics[0]?.id;
-        if (courseId) {
-          const slides = getSlidesForCourse(courseId);
-          slides.forEach((slide) => {
-            items.push({
-              id: slide.id,
-              title: slide.title,
-              type: "slide",
-              url: `/read/${courseId}/${slide.id}`,
-              description: `${breadcrumb(courseId)} · ${slide.pages} pages`,
-              subject: subject.title,
-            });
+        // Add quiz topics
+        subjects.forEach((subject) => {
+          subject.blocks.forEach((block) => {
+            if (subject.id !== "biochemistry") {
+              block.topics.forEach((topic) => {
+                items.push({
+                  id: `quiz-${topic.id}`,
+                  title: `${topic.title} Quiz`,
+                  type: "quiz",
+                  url: `/quiz?topic=${topic.id}`,
+                  description: `${subject.title} · ${block.title}`,
+                  subject: subject.title,
+                });
+              });
+            }
           });
-        }
-      });
-    });
+        });
 
-    // Add quiz topics (simplified - would need actual quiz data)
-    curriculum.forEach((subject) => {
-      subject.blocks.forEach((block) => {
-        if (subject.id !== "biochemistry") {
-          block.topics.forEach((topic) => {
-            items.push({
-              id: `quiz-${topic.id}`,
-              title: `${topic.title} Quiz`,
-              type: "quiz",
-              url: `/quiz?topic=${topic.id}`,
-              description: `${subject.title} · ${block.title}`,
-              subject: subject.title,
-            });
-          });
-        }
-      });
-    });
+        // Add flashcards
+        items.push({
+          id: "flashcards",
+          title: "Flashcards",
+          type: "flashcard",
+          url: "/flashcards",
+          description: "Review spaced-repetition flashcards",
+        });
 
-    // Add flashcards (simplified)
-    items.push({
-      id: "flashcards",
-      title: "Flashcards",
-      type: "flashcard",
-      url: "/flashcards",
-      description: "Review spaced-repetition flashcards",
-    });
+        // Add steeplechase
+        items.push({
+          id: "steeplechase",
+          title: "Steeplechase Practice",
+          type: "steeplechase",
+          url: "/steeplechase",
+          description: "Practice with spotter questions",
+        });
 
-    // Add steeplechase
-    items.push({
-      id: "steeplechase",
-      title: "Steeplechase Practice",
-      type: "steeplechase",
-      url: "/steeplechase",
-      description: "Practice with spotter questions",
-    });
-
-    return items;
+        setSearchItems(items);
+      } catch (error) {
+        console.error("Failed to build search index:", error);
+      }
+    }
+    buildSearchIndex();
   }, []);
+
 
   const getIcon = (type: SearchResult["type"]) => {
     switch (type) {
