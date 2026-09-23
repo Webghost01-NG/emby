@@ -671,8 +671,8 @@ export const adminApi = {
     return response.data;
   },
   getUsers: async (): Promise<UserProfile[]> => {
-    const response = await api.get("/auth/admin/users/");
-    return response.data;
+    const response = await api.get("/auth/admin/users/", { params: { limit: 100 } });
+    return response.data.results ?? response.data;
   },
   getCurriculum: async (): Promise<{
     schools: any[];
@@ -683,8 +683,8 @@ export const adminApi = {
     return response.data;
   },
   getPayments: async (): Promise<any[]> => {
-    const response = await api.get("/auth/admin/payments/");
-    return response.data;
+    const response = await api.get("/auth/admin/payments/", { params: { limit: 100 } });
+    return response.data.results ?? response.data;
   },
   getSchema: async (): Promise<any[]> => {
     const response = await api.get("/auth/admin/schema/");
