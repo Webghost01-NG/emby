@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -34,15 +34,18 @@ interface SearchResult {
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
+  const [searchItems, setSearchItems] = useState<SearchResult[]>([]);
   const router = useRouter();
 
-  // Generate all searchable items
-  const searchItems = useMemo<SearchResult[]>(() => {
+  // Generate searchable items from curriculum and backend-owned slides.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSearchItems() {
     const items: SearchResult[] = [];
 
     // Add courses
-    curriculum.forEach((subject) => {
-      subject.blocks.forEach((block) => {
+    for (const subject of curriculum) {
+      for (const block of subject.blocks) {
         if (subject.id === "biochemistry") {
           // Biochemistry blocks
           items.push({
@@ -66,16 +69,16 @@ export function GlobalSearch() {
             });
           });
         }
-      });
-    });
+      }
+    }
 
     // Add slides
-    curriculum.forEach((subject) => {
-      subject.blocks.forEach((block) => {
+    for (const subject of curriculum) {
+      for (const block of subject.blocks) {
         const courseId =
           subject.id === "biochemistry" ? block.id : block.topics[0]?.id;
         if (courseId) {
-          const slides = getSlidesForCourse(courseId);
+          const slides = await getSlidesForCourse(courseId);
           slides.forEach((slide) => {
             items.push({
               id: slide.id,
@@ -87,8 +90,8 @@ export function GlobalSearch() {
             });
           });
         }
-      });
-    });
+      }
+    }
 
     // Add quiz topics (simplified - would need actual quiz data)
     curriculum.forEach((subject) => {
@@ -126,7 +129,12 @@ export function GlobalSearch() {
       description: "Practice with spotter questions",
     });
 
-    return items;
+    if (!cancelled) setSearchItems(items);
+    }
+    void loadSearchItems();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getIcon = (type: SearchResult["type"]) => {

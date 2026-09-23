@@ -82,6 +82,7 @@ export function ScheduleModal() {
   }, [editingItem, isModalOpen]);
 
   const [allCourses, setAllCourses] = useState<{id: string, name: string, subject: string}[]>([]);
+  const [availableSlides, setAvailableSlides] = useState<Awaited<ReturnType<typeof getSlidesForCourse>>>([]);
 
   useEffect(() => {
     async function loadCurriculum() {
@@ -106,8 +107,20 @@ export function ScheduleModal() {
     loadCurriculum();
   }, []);
 
-  // Get slides for selected course
-  const availableSlides = courseId ? getSlidesForCourse(courseId) : [];
+  // Slides are owned by the backend; load them whenever the selected course changes.
+  useEffect(() => {
+    let cancelled = false;
+    if (!courseId) {
+      setAvailableSlides([]);
+      return;
+    }
+    getSlidesForCourse(courseId).then((slides) => {
+      if (!cancelled) setAvailableSlides(slides);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
