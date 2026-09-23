@@ -17,6 +17,8 @@ type AnalyticsData = {
   total_slides: number;
   total_quizzes_taken: number;
   revenue_summary: { monthly: number; yearly: number };
+  revenue_trends: Array<{ name: string; value: number }>;
+  user_growth: Array<{ name: string; students: number; teachers: number }>;
 };
 
 export default function AdminDashboard() {
@@ -56,31 +58,11 @@ export default function AdminDashboard() {
     );
   }
 
-  // Multiply mock data slightly to simulate range changes
-  const multiplier = timeRange === "7d" ? 0.3 : timeRange === "90d" ? 2.5 : 1;
-
   const statCards = [
-    { title: "Total Users", value: Math.floor(data.total_users * multiplier), icon: Users, desc: `${Math.floor(data.total_premium_users * multiplier)} premium users` },
+    { title: "Total Users", value: data.total_users, icon: Users, desc: `${data.total_premium_users} premium users` },
     { title: "Active Classes", value: data.total_classes, icon: BookOpen, desc: "Created across all schools" },
     { title: "Content Slides", value: data.total_slides, icon: Presentation, desc: `Across ${data.total_subjects} subjects` },
-    { title: "Revenue", value: `₦${((data.revenue_summary.monthly * multiplier) / 1000).toFixed(1)}k`, icon: CreditCard, desc: "From premium subscriptions" },
-  ];
-
-  const mockRevenueData = [
-    { name: 'Jan', value: 4000 * multiplier },
-    { name: 'Feb', value: 3000 * multiplier },
-    { name: 'Mar', value: 2000 * multiplier },
-    { name: 'Apr', value: 2780 * multiplier },
-    { name: 'May', value: 1890 * multiplier },
-    { name: 'Jun', value: 2390 * multiplier },
-    { name: 'Jul', value: 3490 * multiplier },
-  ];
-  
-  const mockUserGrowthData = [
-    { name: 'Week 1', students: 400 * multiplier, teachers: 240 * multiplier },
-    { name: 'Week 2', students: 500 * multiplier, teachers: 280 * multiplier },
-    { name: 'Week 3', students: 650 * multiplier, teachers: 310 * multiplier },
-    { name: 'Week 4', students: 800 * multiplier, teachers: 390 * multiplier },
+    { title: "Revenue", value: `₦${Number(data.revenue_summary.monthly).toLocaleString()}`, icon: CreditCard, desc: "Last 30 days" },
   ];
 
   return (
@@ -133,7 +115,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockRevenueData}>
+              <LineChart data={data.revenue_trends}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
@@ -161,7 +143,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockUserGrowthData}>
+              <BarChart data={data.user_growth}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
