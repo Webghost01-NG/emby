@@ -28,7 +28,8 @@ from .serializers import (
     ProfileSerializer, UpdateProfileSerializer, OnboardingQuestionSerializer,
     OnboardingResponseSerializer, OnboardingSubmitSerializer,
     JoinClassSerializer, ClassGroupSerializer, AnnouncementSerializer,
-    PaymentTransactionSerializer, SchoolSerializer, ExamCountdownSerializer
+    PaymentTransactionSerializer, SchoolSerializer, ExamCountdownSerializer,
+    ClassMemberSerializer
 )
 
 
@@ -635,6 +636,31 @@ def get_my_class(request):
     return Response(ClassGroupSerializer(profile.class_group).data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_class_members(request):
+    """Get members of the current user's class group"""
+    profile = getattr(request.user, 'profile', None)
+    if not profile or not profile.class_group:
+        return Response({
+            'error': 'You are not enrolled in any class'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    profiles = (
+        Profile.objects.filter(class_group=profile.class_group)
+        .select_related('user')
+        .prefetch_related('user__stats')
+    )
+    serializer = ClassMemberSerializer(profiles, many=True)
+    members = list(serializer.data)
+    members.sort(key=lambda m: (m['total_points'] or 0), reverse=True)
+    for idx, m in enumerate(members, start=1):
+        if not m.get('rank'):
+            m['rank'] = idx
+
+    return Response(members, status=status.HTTP_200_OK)
+
+
 # -------------------------
 # CLASS HEAD VERIFICATION
 # -------------------------
@@ -773,10 +799,13 @@ def pending_class_head_verifications(request):
     
     return Response(ProfileSerializer(pending_profiles, many=True).data)
 
-@api_view(['GET'])
+@api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def get_profile(request):
     """Get current user profile"""
+    if request.method == 'DELETE':
+        request.user.delete()
+        return Response({'message': 'Account deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
     profile = request.user.profile
     return Response(ProfileSerializer(profile).data)
 
